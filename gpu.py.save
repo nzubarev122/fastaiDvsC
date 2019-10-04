@@ -1,0 +1,40 @@
+import time
+import torch
+
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.backends.cudnn.enabled)
+
+import fastai
+print(fastai.__version__)
+
+from fastai import *
+from fastai.vision import *
+
+path = untar_data(URLs.DOGS)
+
+data = ImageDataBunch.from_folder(path, ds_tfms=get_transforms(), size=224).normalize(imagenet_stats)
+img,label = data.valid_ds[-1]
+# img.show(title=data.classes[label])
+
+
+start = time.time()
+
+learn = ConvLearner(data, models.resnet50, metrics=accuracy)
+learn.fit_one_cycle(1)
+
+end = time.time()
+print("fit_one_cycle:", end-start)
+start = end
+
+learn.unfreeze()
+learn.fit_one_cycle(1, slice(1e-5,3e-4), pct_start=0.05)
+
+end = time.time()
+print("fit_one_cycle finetune:", end-start)
+start = end
+
+accuracy(*learn.TTA())
+end = time.time()
+print("TTA:", end-start)
+
